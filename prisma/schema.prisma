@@ -1,0 +1,53 @@
+// Schema do banco de dados — reflete o modelo de domínio em docs/arquitetura.md
+// Rodar `npx prisma migrate dev` após qualquer alteração aqui.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Cliente {
+  id         String   @id @default(uuid())
+  nome       String
+  endereco   String
+  latitude   Float
+  longitude  Float
+  referencia String? // campo livre: ex. nome de transportadora, usado na busca (RF07)
+  contato    String?
+  criadoEm   DateTime @default(now()) @map("criado_em")
+
+  paradas ParadaDaRota[]
+
+  @@map("clientes")
+}
+
+model Rota {
+  id           String   @id @default(uuid())
+  data         DateTime @db.Date
+  horarioSaida DateTime @map("horario_saida") @db.Time
+  criadoEm     DateTime @default(now()) @map("criado_em")
+
+  paradas ParadaDaRota[]
+
+  @@map("rotas")
+}
+
+model ParadaDaRota {
+  id                String @id @default(uuid())
+  ordem             Int
+  tempoEstimadoMin  Int    @map("tempo_estimado_min")
+
+  rota      Rota    @relation(fields: [rotaId], references: [id], onDelete: Cascade)
+  rotaId    String  @map("rota_id")
+
+  cliente   Cliente @relation(fields: [clienteId], references: [id])
+  clienteId String  @map("cliente_id")
+
+  @@unique([rotaId, ordem]) // uma rota não pode ter duas paradas na mesma posição
+  @@unique([rotaId, clienteId]) // um cliente não aparece duas vezes na mesma rota
+  @@map("paradas_da_rota")
+}
